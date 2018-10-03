@@ -1,245 +1,228 @@
-
+# Python
 from os.path import join as pjoin
 
+# PyQt5
 from PyQt5.QtCore import QAbstractAnimation, QBasicTimer, QByteArray, QEasingCurve, QPointF, QPropertyAnimation, Qt, QTime
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QBrush, QColor, QIcon
 from PyQt5.QtWidgets import QDesktopWidget, QGraphicsScene, QMainWindow
 from PyQt5.uic import loadUi
 
-from modules.border import Border
+# Lindworm
 from modules.food import Food
 from modules.snake import Snake
 
 class Lindworm(QMainWindow):
 
-    def __init__(self, dir, parent=None):
+    def __init__(self, dir, parent = None)
         super(Lindworm, self).__init__(parent)
-        loadUi(pjoin(dir, "res", "lindworm.ui"), self)
+        loadUi(pjoin(dir, "res", "lindworm.py"), self)
         self.setWindowIcon(QIcon(pjoin(dir, "res", "icon.png")))
 
-        # The Graphics Scene, for drawing purposes
-        # Let's call it canvas to confuse everyone
+        # This is where all the objects are handled (drawn, updated, moved, painted, etc.)
         self.canvas = QGraphicsScene(self)
+        # Use all the QGraphicsView area
         self.canvas.setSceneRect(0, 0, self.graphicsView.width(), self.graphicsView.height())
         self.graphicsView.setScene(self.canvas)
 
-        # Initialize app variables
-        self.snake = None
-        self.food = None
-        self.playing = False
-        self.special = None
-        self.timer = QBasicTimer()
-        self.elapsedtime = QTime()
+        # Application variables
+        self.playing = False            # Is the player playing? (obviously)
+        self.timer = QBasicTimer()      # Used for controlling the game speed, and the canvas update
+        self.speed = 100                # Refresh rate which the game is updated (in milliseconds,
+                                        # the greater it is, the slower is refresh)
+        self.particleSize = 10          # Particle's size of the snake, food, border, ... (scale?)
+        self.drawOutline = True         # Should the objects have an outline?
+        self.score = 0                  # Keep track of the user's score
+        self.playtime = QTime()         # Keep track of the play time, uses later to increase the game speed
 
-        # Speed of the Game, the lower the number, the faster it moves
-        self.speed = 100
-
-        # Decorative border, just because
-        border = Border(self)
-        self.canvas.addItem(border)
-
-        # Center the window on the desktop
-        # I like it to be the center of the attention, yeah, an attention whore
+        self.drawBorder()
         self.centerOnScreen()
         self.show()
 
+    # ####### Application Methods
+
     def startGame(self):
         """
-            Starts a New Game every time the user press [Enter, Return]
-            if a game has not started yet
+        Starts a New Game every time the user press [Enter, Return]
+        if a game has not started yet
         """
-        self.score.setText("0")
-        self.playing = True
-        self.elapsedtime.start()
+        self.playing = False
 
-        # Start the timer, its speed controlled by the self.speed var
+        # Reset the score
+        self.score = 0
+        self.scoreLabel.setText(str(self.score))
+
+        # Start counting the time and the timer which controlls the game cycle
+        self.speed = 100
+        self.playtime.start()
         self.timer.start(self.speed, Qt.PreciseTimer, self)
 
-        # Check if there is an existing instance of the Snake in the screen
+        # Check if there is a snake drawn on the canvas
         if self.snake is not None and self.snake in self.canvas.items():
             self.canvas.removeItem(self.snake)
 
-        # Create the new Snake and add it to the screen
-        self.snake = Snake(self)
-        self.canvas.addItem(self.snake)
-
-        # Add the food
-        self.addFood()
-
-    def endGame(self):
-        """
-            Ends the game, stops its timer, and shows a the score for
-            placebo reasons
-        """
-        self.score.setText("Game Over. You scored <b>%d</b> points" % self.getScore())
-        self.playing = False
-        self.timer.stop()
-
-        # Reset speed to its original value
-        self.speed = 100
-
-        # Remove the piece of food that was left on the screen.
-        # Mama always said that i needed to eat all my food
-        # (or hide it when she wasn't looking)
-        if self.food in self.canvas.items():
+        # The same for the food and special food
+        if self.food is not None and self.food in self.canvas.items():
             self.canvas.removeItem(self.food)
         if self.special is not None and self.special in self.canvas.items():
             self.canvas.removeItem(self.special)
 
-    def addFood(self, special = False):
+        # Add the new Snake object to the canvas
+        self.snake = Snake(self)
+        self.canvas.addItem(self.snake)
+
+        # Call the function to add a piece of Food
+        self.addFood()
+
+    def endGame(self):
         """
-            Add a piece of Food in the screen
+        Handles the event when the Snake dies
+        """
+        self.playing = False
+
+        # Show the user the final score
+        point = "point" if self.score == 1 else "points"
+        self.scoreLabel.setText("Game Over. You scored <b>%d</b> %s" % (self.score, point))
+
+        # Stop the timer
+        self.timer.stop()
+
+    def addFood(self, special=False):
+        """
+        Add a piece of Food to the canvas
         """
         food = None
 
-        # Check if the food spawned inside the Snake's body
-        # and keep trying until its outside
+        # Check that the food doesn't spawns inside the snake's body
         while food is None:
             food = Food(self)
-            pos = [food.x(), food.y()]
+            position = [food.x(), food.y()]
 
-            if pos in self.snake.body:
+            # If it's inside the body, try again
+            if position in self.snake.body:
                 food = None
 
-        # Check if the program need to treat it like special or
-        # or regular food
         if special:
             self.special = food
             self.special.changeBrush()
         else:
             self.food = food
 
-        # Add it to the canvas (scene)
         self.canvas.addItem(food)
 
-    def getScore(self):
+    # ####### QMainWindow events
+
+    def closeEvent(self, event):
         """
-            Get the text inside the Score Label and convert it
-            to integer for later operations
+        Always remove junk when closing an application
         """
-        return int(self.score.text())
+        # Stop the Timer if it's active
+        if self.timer.isActive():
+            self.timer.stop()
+
+        # Continue with the closing event
+        event.accept()
 
     def keyPressEvent(self, event):
         """
-            Listen to the user's input
-
-            The Qt.Key_Enter is the key in the numpad "Intro"
-            And the Qt.Key_Return is the big one we always use
-
-            You can also play with the wasd keys
+        Listen to the user's input
         """
-        snakeStart = [Qt.Key_Enter, Qt.Key_Return]
-        snakeMove = [Qt.Key_Left, Qt.Key_A, Qt.Key_Right, Qt.Key_D, \
-            Qt.Key_Up, Qt.Key_W, Qt.Key_Down, Qt.Key_S]
+        # Enter is the key located in the keypad, usually denoted by the text "Intro"
+        # Return is the big key we usually use to create a break in a sentence
+        start = [Qt.Key_Return, Qt.Key_Enter]
+        # Game can be played using Arrow keys and WASD
+        move = [Qt.Key_Left, Qt.Key_A, Qt.Key_Right, Qt.Key_D, Qt.Key_Up, Qt.Key_W, Qt.Key_Down, Qt.Key_S]
 
-        # Start a game if not already playing
-        if not self.playing and event.key() in snakeStart:
+        # Starts a new game if not already playing
+        if not self.playing and event.key() in start:
             self.startGame()
+
         # Change the Snake's movement direction
-        if self.playing and event.key() in snakeMove:
+        if self.playing and event.key() in move:
             self.snake.changeDirection(event.key())
 
     def timerEvent(self, event):
         """
-            In charge of, in this case, update the game and check the
-            conditions to continue playing, grow, spawn food and special
-            item
+        In charge of, in this case, update the game and check the
+        conditions to continue playing, grow, spawn food and special item
         """
 
-        # Check if the event is from self.timer
-        if event.timerId() == self.timer.timerId():
-            self.snake.update()
-            width = self.graphicsView.width()
-            height = self.graphicsView.height()
-            x = self.snake.body[0][0]
-            y = self.snake.body[0][1]
-            score = self.getScore()
+        # Check if the event if from the self.timer
+        if event.timerId() is self.timer.timerId():
+            pass
+        else:
+            super(Lindworm, self).timerEvent(event)
 
-            # Spawn a Special Food every 15 points
-            if score % 15 == 0 and score != 0 and self.special is None:
-                self.addFood(True)
+    # ####### "Beautifying" methods (graphics-wise)
 
-            # Speed up the speed every 60 seconds
-            time = self.elapsedtime.elapsed()
-            if time >= 60000:
-                # Reset the time
-                self.elapsedtime.restart()
-                # Increase the speed
-                self.speed -= 10
-
-                # Stop the old timer, otherwise it won't be possible to
-                # change the game speed. There is nothing like timer.setTime()
-                self.timer.stop()
-                # Set the new speed
-                self.timer.start(self.speed, Qt.PreciseTimer, self)
-
-            # Snake eats the food
-            if self.food.x() == x and self.food.y() == y:
-                self.snake.grow()
-                self.score.setText(str(score + 1))
-                self.canvas.removeItem(self.food)
-                self.addFood()
-
-            # Snake eats the Special Food
-            if self.special is not None:
-                if self.special.x() == x and self.special.y() == y:
-                    self.snake.grow()
-                    self.score.setText(str(score + 5))
-                    self.canvas.removeItem(self.special)
-                    self.special = None
-
-            # Check for collisions - X axis
-            if x > width - 20 or x < 10:
-                self.shakeItLikeItsHot(40, 0)
-                self.endGame()
-            # Check for collisions - Y axis
-            elif y > height - 20 or y < 10:
-                self.shakeItLikeItsHot(0, 40)
-                self.endGame()
-            # Check for collisions - itself
-            # Had to check for the body length, because it was dying every time
-            # the snake ate the first piece of food, couldn't figure out why
-            elif self.snake.body[0] in self.snake.body[1:] and len(self.snake.body) > 2:
-                self.shakeItLikeItsHot(20, 20)
-                self.endGame()
-
-    def closeEvent(self, event):
+    def drawBorder(self):
         """
-            Always remove junk when closing the application
+        Draw a decorative border in the perimeter of the QGraphicsView
         """
-        if self.timer.isActive():
-            self.timer.stop()
 
-        event.accept()
+        # Change the outline color (black by default) if the self.drawOutline is True,
+        # otherwise remove it completely
+        outline = QPen(QColor(62, 39, 35)) if self.drawOutline else QPen(Qt.NoPen)
+
+        # Change the background color for the object being drawn
+        background = QBrush(QColor(109, 76, 65), Qt.Dense5Pattern) # Dense4
+
+        # If draw outline is set to True, remove 2 pixels from its size, because the pen's
+        # width, by default, is 1 pixel per line drawn, changing the object dimension by 2 pixels
+        # per axis (x, y)
+        size = self.particleSize - 2 if self.drawOutline else self.particleSize
+
+        # [0, 10, 20, 30, ... , self.canvas.width()] with particle size set to 10
+        topBottom = range(0, int(self.canvas.width()), self.particleSize)
+
+        # [10, 20, 30, 40, ... , self.canvas,height() - 10] with particle size set to 10
+        leftRight = range(self.particleSize, int(self.canvas.height()) - self.particleSize, self.particleSize)
+
+        for spot in topBottom:
+            self.canvas.addRect(spot, 0, size, size)
+            self.canvas.addRect(int(self.canvas.height()) - size, spot, size, size)
+
+        for spot in leftRight:
+            self.canvas.addRect(size, spot, size, size)
+            self.canvas.addRect(int(self.canvas.width()) - size, spot, size, size)
+
+    def shakeIt(self):
+        """
+        Animate the Position of the Window when the Snake dies a horrible death due
+        to the user's fault.
+
+        In this case, the use of setStartValue and setEndValue cannot be implemented
+        due to the fact that the initial and end position of the window are the same,
+        hence the multiple calls of setKeyValueAt.
+        """
+
+        self.animation = QPropertyAnimation(self, QByteArray().append("pos"))
+
+        # Save the window's original position
+        origin = self.pos()
+
+        # Amount of pixels that the window is going to be moved
+        offset = 40
+
+        self.animation.setKeyValueAt(0.0, QPointF(origin.x(), origin.y()))
+        self.animation.setKeyValueAt(0.3, QPointF(origin.x() - offset, origin.y()))
+        self.animation.setKeyValueAt(0.6, QPointF(origin.x() + offset, origin.y()))
+        self.animation.setKeyValueAt(1.0, QPointF(origin.x(), origin.y()))
+
+        # Duration of the animation, in milliseconds (1s = 1000ms)
+        self.animation.setDuration(1000)
+
+        # QEasingCurve.InOutElastic is a type of animation path
+        self.animation.setEasingCurve(QEasingCurve.InOutElastic)
+
+        # Start and Delete the animation when done
+        self.animation.start(QAbstractAnimation.DeleteWhenStopped)
 
     def centerOnScreen(self):
+        """
+        Centers the window on the screen keeping in mind the available space for
+        the window to show
+        """
         frameGeometry = self.frameGeometry()
         centerPoint = QDesktopWidget().availableGeometry().center()
         frameGeometry.moveCenter(centerPoint)
         self.move(frameGeometry.topLeft())
-
-    def shakeItLikeItsHot(self, xoff, yoff):
-        """
-            Animate the position of the window when the Snake dies
-            (I like them funny names)
-        """
-        self.animation = QPropertyAnimation(self, QByteArray().append("pos"))
-        origin = self.pos()
-
-        # Cannot set only to
-        #   self.animation.setStartValue(...)
-        #   self.animation.setEndValue(...)
-        # Because the initial (setKeyValueAt(0.0, ...)) and end (setKeyValueAt(1.0, ...))
-        # position are the same, hence the multiple setKeyValueAt
-        self.animation.setKeyValueAt(0.0, QPointF(origin.x(), origin.y()))
-        self.animation.setKeyValueAt(0.2, QPointF(origin.x() - xoff, origin.y() + yoff))
-        self.animation.setKeyValueAt(0.4, QPointF(origin.x() - xoff, origin.y() - yoff))
-        self.animation.setKeyValueAt(0.6, QPointF(origin.x() + xoff, origin.y() - yoff))
-        self.animation.setKeyValueAt(0.8, QPointF(origin.x() + xoff, origin.y() + yoff))
-        self.animation.setKeyValueAt(1.0, QPointF(origin.x(), origin.y()))
-
-        # Set the animation duration, easing curve (type of animation)
-        # and delete the animation when done
-        self.animation.setDuration(1000)
-        self.animation.setEasingCurve(QEasingCurve.InOutElastic)
-        self.animation.start(QAbstractAnimation.DeleteWhenStopped)
