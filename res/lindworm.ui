@@ -41,7 +41,7 @@
    <bool>true</bool>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QLabel" name="score">
+   <widget class="QLabel" name="scoreLabel">
     <property name="geometry">
      <rect>
       <x>10</x>

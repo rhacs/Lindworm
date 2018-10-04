@@ -2,8 +2,8 @@
 from os.path import join as pjoin
 
 # PyQt5
-from PyQt5.QtCore import QAbstractAnimation, QBasicTimer, QByteArray, QEasingCurve, QPointF, QPropertyAnimation, Qt, QTime
-from PyQt5.QtGui import QBrush, QColor, QIcon
+from PyQt5.QtCore import QAbstractAnimation, QBasicTimer, QByteArray, QEasingCurve, QPointF, QPropertyAnimation, Qt, QTime, QRectF
+from PyQt5.QtGui import QBrush, QColor, QIcon, QPen
 from PyQt5.QtWidgets import QDesktopWidget, QGraphicsScene, QMainWindow
 from PyQt5.uic import loadUi
 
@@ -13,15 +13,16 @@ from modules.snake import Snake
 
 class Lindworm(QMainWindow):
 
-    def __init__(self, dir, parent = None)
+    def __init__(self, dir, parent = None):
         super(Lindworm, self).__init__(parent)
-        loadUi(pjoin(dir, "res", "lindworm.py"), self)
+        loadUi(pjoin(dir, "res", "lindworm.ui"), self)
         self.setWindowIcon(QIcon(pjoin(dir, "res", "icon.png")))
 
         # This is where all the objects are handled (drawn, updated, moved, painted, etc.)
         self.canvas = QGraphicsScene(self)
         # Use all the QGraphicsView area
         self.canvas.setSceneRect(0, 0, self.graphicsView.width(), self.graphicsView.height())
+        self.canvas.setBackgroundBrush(QBrush(QColor(52, 56, 56), Qt.SolidPattern))
         self.graphicsView.setScene(self.canvas)
 
         # Application variables
@@ -30,9 +31,12 @@ class Lindworm(QMainWindow):
         self.speed = 100                # Refresh rate which the game is updated (in milliseconds,
                                         # the greater it is, the slower is refresh)
         self.particleSize = 10          # Particle's size of the snake, food, border, ... (scale?)
-        self.drawOutline = True         # Should the objects have an outline?
         self.score = 0                  # Keep track of the user's score
         self.playtime = QTime()         # Keep track of the play time, uses later to increase the game speed
+
+        self.snake = None
+        self.food = None
+        self.special = None
 
         self.drawBorder()
         self.centerOnScreen()
@@ -45,7 +49,7 @@ class Lindworm(QMainWindow):
         Starts a New Game every time the user press [Enter, Return]
         if a game has not started yet
         """
-        self.playing = False
+        self.playing = True
 
         # Reset the score
         self.score = 0
@@ -86,6 +90,9 @@ class Lindworm(QMainWindow):
         # Stop the timer
         self.timer.stop()
 
+        # Animate the Window
+        self.shakeIt()
+
     def addFood(self, special=False):
         """
         Add a piece of Food to the canvas
@@ -109,6 +116,10 @@ class Lindworm(QMainWindow):
 
         self.canvas.addItem(food)
 
+    def updateScore(self, points):
+        self.score += points
+        self.scoreLabel.setText(str(self.score))
+
     # ####### QMainWindow events
 
     def closeEvent(self, event):
@@ -130,14 +141,14 @@ class Lindworm(QMainWindow):
         # Return is the big key we usually use to create a break in a sentence
         start = [Qt.Key_Return, Qt.Key_Enter]
         # Game can be played using Arrow keys and WASD
-        move = [Qt.Key_Left, Qt.Key_A, Qt.Key_Right, Qt.Key_D, Qt.Key_Up, Qt.Key_W, Qt.Key_Down, Qt.Key_S]
+        directions = [Qt.Key_Left, Qt.Key_A, Qt.Key_Right, Qt.Key_D, Qt.Key_Up, Qt.Key_W, Qt.Key_Down, Qt.Key_S]
 
         # Starts a new game if not already playing
         if not self.playing and event.key() in start:
             self.startGame()
 
         # Change the Snake's movement direction
-        if self.playing and event.key() in move:
+        if self.playing and event.key() in directions:
             self.snake.changeDirection(event.key())
 
     def timerEvent(self, event):
@@ -148,7 +159,35 @@ class Lindworm(QMainWindow):
 
         # Check if the event if from the self.timer
         if event.timerId() is self.timer.timerId():
-            pass
+            self.snake.update()
+
+            # Add a piece of Special Food every 15 points
+            if self.score % 15 == 0 and self.score != 0 and self.special is None:
+                self.addFood(True)
+
+            # Increase the movement speed of the Snake every 60 seconds
+            if self.playtime.elapsed() > 60000:
+                self.playtime.restart()
+                self.speed -= 10
+
+                # Stop and start the timer, there is no method timer.setTime or
+                # the like for changing the timer's speed of refresh
+                self.timer.stop()
+                self.timer.start(self.speed, Qt.PreciseTimer, self)
+
+            # Check if the Snake ate the food
+            if self.snake.ateFood(self.food):
+                self.updateScore(1)
+                self.addFood()
+            # Same process for the Special food
+            if self.snake.ateFood(self.special):
+                self.updateScore(5)
+                self.special = None
+
+            # Check if Snake is out of bounds, or its head collided with
+            # its body
+            if self.snake.outOfBounds() or self.snake.headInsideOfTail():
+                self.endGame()
         else:
             super(Lindworm, self).timerEvent(event)
 
@@ -158,18 +197,11 @@ class Lindworm(QMainWindow):
         """
         Draw a decorative border in the perimeter of the QGraphicsView
         """
-
-        # Change the outline color (black by default) if the self.drawOutline is True,
-        # otherwise remove it completely
-        outline = QPen(QColor(62, 39, 35)) if self.drawOutline else QPen(Qt.NoPen)
+        # Remove the outline
+        outline = QPen(Qt.NoPen)
 
         # Change the background color for the object being drawn
-        background = QBrush(QColor(109, 76, 65), Qt.Dense5Pattern) # Dense4
-
-        # If draw outline is set to True, remove 2 pixels from its size, because the pen's
-        # width, by default, is 1 pixel per line drawn, changing the object dimension by 2 pixels
-        # per axis (x, y)
-        size = self.particleSize - 2 if self.drawOutline else self.particleSize
+        background = QBrush(QColor(0, 95, 107), Qt.Dense3Pattern)
 
         # [0, 10, 20, 30, ... , self.canvas.width()] with particle size set to 10
         topBottom = range(0, int(self.canvas.width()), self.particleSize)
@@ -177,13 +209,20 @@ class Lindworm(QMainWindow):
         # [10, 20, 30, 40, ... , self.canvas,height() - 10] with particle size set to 10
         leftRight = range(self.particleSize, int(self.canvas.height()) - self.particleSize, self.particleSize)
 
-        for spot in topBottom:
-            self.canvas.addRect(spot, 0, size, size)
-            self.canvas.addRect(int(self.canvas.height()) - size, spot, size, size)
+        size = self.particleSize
+        width = self.canvas.width()
+        height = self.canvas.height()
 
-        for spot in leftRight:
-            self.canvas.addRect(size, spot, size, size)
-            self.canvas.addRect(int(self.canvas.width()) - size, spot, size, size)
+        # Top, Bottom, Left, Right borders (in that order)
+        areas = [
+            QRectF(0, 0, width, size),
+            QRectF(0, height - size, width, size),
+            QRectF(0, size, size, height - size * 2),
+            QRectF(width - size, size, size, height - size * 2)
+        ]
+
+        for area in areas:
+            self.canvas.addRect(area, outline, background)
 
     def shakeIt(self):
         """

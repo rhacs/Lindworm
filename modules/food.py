@@ -10,12 +10,14 @@ class Food(QGraphicsItem):
     def __init__(self, parent):
         super(Food, self).__init__()
 
+        self.particleSize = parent.particleSize
+
         # Set the brush style for the Food
         self.brush = QBrush(QColor(244, 66, 54), Qt.Dense2Pattern)
 
         # Choose a random spot on the available screen
-        x = randrange(10, parent.canvas.width() - 20, 10)
-        y = randrange(10, parent.canvas.height() - 20, 10)
+        x = randrange(self.particleSize, parent.canvas.width() - self.particleSize * 2, self.particleSize)
+        y = randrange(self.particleSize, parent.canvas.height() - self.particleSize * 2, self.particleSize)
 
         self.setPos(x, y)
 
@@ -26,7 +28,7 @@ class Food(QGraphicsItem):
     def paint(self, painter, option, widget):
         painter.setPen(Qt.NoPen)
         painter.setBrush(self.brush)
-        painter.drawRect(0, 0, 10, 10)
+        painter.drawRect(0, 0, self.particleSize, self.particleSize)
 
     def boundingRect(self):
-        return QRectF(0, 0, 10, 10)
+        return QRectF(0, 0, self.particleSize, self.particleSize)
