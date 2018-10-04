@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     application.setStyle("fusion")
     application.setApplicationName("Lindworm")
-    application.setApplicationVersion("1.0:2018.10")
+    application.setApplicationVersion("1.1:2018.10")
     application.setOrganizationName("rhacs")
 
     workdir = dirname(realpath(__file__))
