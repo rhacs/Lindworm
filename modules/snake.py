@@ -1,12 +1,21 @@
 from random import choice
 
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QBrush, QColor
+from PyQt5.QtCore import QRectF
+from PyQt5.QtCore import Qt
+
+from PyQt5.QtGui import QBrush
+from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QPainter
+
 from PyQt5.QtWidgets import QGraphicsItem
+from PyQt5.QtWidgets import QStyleOptionGraphicsItem
+from PyQt5.QtWidgets import QWidget
+
+from modules.food import Food
 
 class Snake(QGraphicsItem):
 
-    def __init__(self, parent):
+    def __init__(self, parent: object) -> None:
         super(Snake, self).__init__()
         self.parent = parent.canvas
         self.particleSize = parent.particleSize
@@ -20,7 +29,7 @@ class Snake(QGraphicsItem):
         height = range(self.particleSize, int(self.parent.height()) - self.particleSize * 2, self.particleSize)
         self.body = [[width[int(len(width) / 2)], height[int(len(height) / 2)]]]
 
-    def ateFood(self, food):
+    def ateFood(self, food: Food) -> bool:
         """
         Compare the snake's head position with the food
         """
@@ -33,19 +42,19 @@ class Snake(QGraphicsItem):
 
         return False
 
-    def grow(self):
+    def grow(self) -> None:
         """
         Take the last element of the list, and reinsert it as the last element
         """
         self.body.append(self.body[-1])
 
-    def headInsideOfTail(self):
+    def headInsideOfTail(self) -> bool:
         """
         Check if the head of the snake has collided with its own body
         """
         return len(self.body) > 2 and self.body[0] in self.body[1:]
 
-    def outOfBounds(self):
+    def outOfBounds(self) -> bool:
         """
         Check if the snake collided with the boundaries
         """
@@ -58,7 +67,7 @@ class Snake(QGraphicsItem):
                head[1] > (height - self.particleSize * 2) or \
                head[1] < self.particleSize
 
-    def changeDirection(self, key):
+    def changeDirection(self, key: int) -> None:
         """
         Change the Snake's direction according to the key the user has pressed
         """
@@ -71,7 +80,7 @@ class Snake(QGraphicsItem):
         elif key in [Qt.Key_W, Qt.Key_Up] and self.direction != [0, self.particleSize]:
             self.direction = [0, -self.particleSize]
 
-    def paint(self, painter, object, widget):
+    def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget) -> None:
         brush = QBrush(QColor(76, 175, 79), Qt.Dense3Pattern)
         painter.setPen(Qt.NoPen)
         painter.setBrush(brush)
@@ -87,5 +96,5 @@ class Snake(QGraphicsItem):
         # Insert the new head
         self.body.insert(0, head)
 
-    def boundingRect(self):
+    def boundingRect(self) -> QRectF:
         return QRectF(0, 0, self.parent.width(), self.parent.height())

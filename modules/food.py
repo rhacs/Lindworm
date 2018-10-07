@@ -1,13 +1,21 @@
 
 from random import randrange
 
-from PyQt5.QtCore import QRectF, Qt
-from PyQt5.QtGui import QBrush, QColor, QPen
+from PyQt5.QtCore import QRectF
+from PyQt5.QtCore import Qt
+
+from PyQt5.QtGui import QBrush
+from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QPainter
+from PyQt5.QtGui import QPen
+
 from PyQt5.QtWidgets import QGraphicsItem
+from PyQt5.QtWidgets import QStyleOptionGraphicsItem
+from PyQt5.QtWidgets import QWidget
 
 class Food(QGraphicsItem):
 
-    def __init__(self, parent):
+    def __init__(self, parent: object) -> None:
         super(Food, self).__init__()
 
         self.particleSize = parent.particleSize
@@ -21,14 +29,14 @@ class Food(QGraphicsItem):
 
         self.setPos(x, y)
 
-    def changeBrush(self):
+    def changeBrush(self) -> None:
         # Color change when the Special item is added to the screen
         self.brush = QBrush(QColor(245, 127, 23), Qt.Dense1Pattern)
 
-    def paint(self, painter, option, widget):
+    def paint(self, painter: QPainter, option: QStyleOptionGraphicsItem, widget: QWidget) -> None:
         painter.setPen(Qt.NoPen)
         painter.setBrush(self.brush)
         painter.drawRect(0, 0, self.particleSize, self.particleSize)
 
-    def boundingRect(self):
+    def boundingRect(self) -> QRectF:
         return QRectF(0, 0, self.particleSize, self.particleSize)

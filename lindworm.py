@@ -2,9 +2,28 @@
 from os.path import join as pjoin
 
 # PyQt5
-from PyQt5.QtCore import QAbstractAnimation, QBasicTimer, QByteArray, QEasingCurve, QPointF, QPropertyAnimation, Qt, QTime, QRectF
-from PyQt5.QtGui import QBrush, QColor, QIcon, QPen
-from PyQt5.QtWidgets import QDesktopWidget, QGraphicsScene, QMainWindow
+from PyQt5.QtCore import QAbstractAnimation
+from PyQt5.QtCore import QBasicTimer
+from PyQt5.QtCore import QByteArray
+from PyQt5.QtCore import QEasingCurve
+from PyQt5.QtCore import QPointF
+from PyQt5.QtCore import QPropertyAnimation
+from PyQt5.QtCore import Qt
+from PyQt5.QtCore import QTime
+from PyQt5.QtCore import QTimerEvent
+from PyQt5.QtCore import QRectF
+
+from PyQt5.QtGui import QBrush
+from PyQt5.QtGui import QCloseEvent
+from PyQt5.QtGui import QColor
+from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtGui import QPen
+
+from PyQt5.QtWidgets import QDesktopWidget
+from PyQt5.QtWidgets import QGraphicsScene
+from PyQt5.QtWidgets import QMainWindow
+
 from PyQt5.uic import loadUi
 
 # Lindworm
@@ -13,7 +32,7 @@ from modules.snake import Snake
 
 class Lindworm(QMainWindow):
 
-    def __init__(self, dir, parent = None):
+    def __init__(self, dir: str, parent: object=None) -> None:
         super(Lindworm, self).__init__(parent)
         loadUi(pjoin(dir, "res", "lindworm.ui"), self)
         self.setWindowIcon(QIcon(pjoin(dir, "res", "icon.png")))
@@ -44,7 +63,7 @@ class Lindworm(QMainWindow):
 
     # ####### Application Methods
 
-    def startGame(self):
+    def startGame(self) -> None:
         """
         Starts a New Game every time the user press [Enter, Return]
         if a game has not started yet
@@ -77,7 +96,7 @@ class Lindworm(QMainWindow):
         # Call the function to add a piece of Food
         self.addFood()
 
-    def endGame(self):
+    def endGame(self) -> None:
         """
         Handles the event when the Snake dies
         """
@@ -93,7 +112,7 @@ class Lindworm(QMainWindow):
         # Animate the Window
         self.shakeIt()
 
-    def addFood(self, special=False):
+    def addFood(self, special: bool=False) -> None:
         """
         Add a piece of Food to the canvas
         """
@@ -116,13 +135,13 @@ class Lindworm(QMainWindow):
 
         self.canvas.addItem(food)
 
-    def updateScore(self, points):
+    def updateScore(self, points: int) -> None:
         self.score += points
         self.scoreLabel.setText(str(self.score))
 
     # ####### QMainWindow events
 
-    def closeEvent(self, event):
+    def closeEvent(self, event: QCloseEvent) -> None:
         """
         Always remove junk when closing an application
         """
@@ -133,7 +152,7 @@ class Lindworm(QMainWindow):
         # Continue with the closing event
         event.accept()
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event: QKeyEvent) -> None:
         """
         Listen to the user's input
         """
@@ -151,7 +170,7 @@ class Lindworm(QMainWindow):
         if self.playing and event.key() in directions:
             self.snake.changeDirection(event.key())
 
-    def timerEvent(self, event):
+    def timerEvent(self, event: QTimerEvent) -> None:
         """
         In charge of, in this case, update the game and check the
         conditions to continue playing, grow, spawn food and special item
@@ -193,7 +212,7 @@ class Lindworm(QMainWindow):
 
     # ####### "Beautifying" methods (graphics-wise)
 
-    def drawBorder(self):
+    def drawBorder(self) -> None:
         """
         Draw a decorative border in the perimeter of the QGraphicsView
         """
@@ -224,7 +243,7 @@ class Lindworm(QMainWindow):
         for area in areas:
             self.canvas.addRect(area, outline, background)
 
-    def shakeIt(self):
+    def shakeIt(self) -> None:
         """
         Animate the Position of the Window when the Snake dies a horrible death due
         to the user's fault.
@@ -256,7 +275,7 @@ class Lindworm(QMainWindow):
         # Start and Delete the animation when done
         self.animation.start(QAbstractAnimation.DeleteWhenStopped)
 
-    def centerOnScreen(self):
+    def centerOnScreen(self) -> None:
         """
         Centers the window on the screen keeping in mind the available space for
         the window to show
